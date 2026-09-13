@@ -1,0 +1,17 @@
+{
+  "name": "claude-ui-toolchain",
+  "owner": {
+    "name": "GitAlboBis"
+  },
+  "metadata": {
+    "description": "Toolchain UI, front-end e design di Claude Code, distribuita come plugin."
+  },
+  "plugins": [
+    {
+      "name": "ui-design",
+      "source": "./plugins/ui-design",
+      "description": "Hook di routing per i prompt di UI, front-end e design, con 97 skill e i connettori MCP di componenti e riferimenti.",
+      "version": "1.0.0"
+    }
+  ]
+}

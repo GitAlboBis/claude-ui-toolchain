@@ -263,6 +263,29 @@ function designDocsSection(dir, compact) {
   );
 }
 
+// Dentro un plugin le skill e i connettori prendono il nome del plugin come prefisso;
+// installati a mano in ~/.claude no. Il plugin si riconosce dal suo .claude-plugin/plugin.json.
+function pluginName() {
+  try {
+    const { name } = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '.claude-plugin', 'plugin.json'), 'utf8'));
+    return typeof name === 'string' && name ? name : null;
+  } catch {
+    return null;
+  }
+}
+
+function pluginNote(compact) {
+  const name = pluginName();
+  if (!name) return '';
+  if (compact) return ` Su questa macchina le skill della tabella hanno il prefisso \`${name}:\`.`;
+  return (
+    `\n\n## Prefisso del plugin\n\nSu questa macchina la toolchain è installata come plugin \`${name}\`. ` +
+    `Le skill della tabella si invocano con il prefisso: \`${name}:impeccable\`, \`${name}:emil-design-eng\`, ` +
+    `e per l'utente \`/${name}:review-animations\`. Le skill \`ecc:*\` e \`design\` restano come sono. ` +
+    `I connettori MCP del plugin si chiamano \`plugin:${name}:<nome>\` (per esempio \`plugin:${name}:magicuidesign\`).`
+  );
+}
+
 function handle(input) {
   if (!input || typeof input.prompt !== 'string') return null;
   const now = Date.now();
@@ -283,7 +306,9 @@ function handle(input) {
     if (full) next.lastFull = now;
     if (!writeState(file, next)) full = true;
   }
-  const context = full ? routing + designDocsSection(dir, false) : SHORT_REMINDER + designDocsSection(dir, true);
+  const context = full
+    ? routing + pluginNote(false) + designDocsSection(dir, false)
+    : SHORT_REMINDER + pluginNote(true) + designDocsSection(dir, true);
   return { hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: context } };
 }
 

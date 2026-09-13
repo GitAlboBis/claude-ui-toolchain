@@ -1,6 +1,32 @@
 {
   "name": "claude-ui-toolchain",
-  "description": "Toolchain UI, front-end e design di Claude Code: hook di routing, regole, skill, connettori MCP e plugin ECC.",
+  "description": "Toolchain UI, front-end e design di Claude Code, distribuita come plugin.",
+  "owner": { "name": "GitAlboBis" },
+  "marketplaceSource": "GitAlboBis/claude-ui-toolchain",
+  "plugin": {
+    "name": "ui-design",
+    "description": "Hook di routing per i prompt di UI, front-end e design, con 97 skill e i connettori MCP di componenti e riferimenti.",
+    "userConfig": {
+      "originkit_api_key": {
+        "type": "string",
+        "title": "Chiave API di OriginKit",
+        "description": "Da originkit.dev > Settings > API Integration. Senza chiave il connettore originkit non si connette.",
+        "sensitive": true
+      },
+      "context7_api_key": {
+        "type": "string",
+        "title": "Chiave API di Context7",
+        "description": "Facoltativa: senza chiave Context7 funziona con limiti di richieste più bassi.",
+        "sensitive": true,
+        "default": ""
+      }
+    },
+    "install": {
+      "env": { "originkit_api_key": "ORIGINKIT_API_KEY", "context7_api_key": "CONTEXT7_API_KEY" },
+      "required": ["originkit_api_key"],
+      "withoutKey": { "originkit_api_key": "il connettore originkit risponde 401" }
+    }
+  },
   "hooks": ["ui-design-router.js", "ui-design-routing.md"],
   "rules": ["frontend-visual-skills.md", "context7.md"],
   "skills": [
@@ -22,41 +48,22 @@
     "ux-feedback", "ux-flow", "uxui-principles", "vengeance-ui", "verification-before-completion", "web-design-guidelines",
     "writing-plans", "writing-skills"
   ],
-  "mcpServers": [
-    {
-      "name": "originkit",
-      "transport": "http",
+  "mcpServers": {
+    "originkit": {
+      "type": "http",
       "url": "https://mcp.originkit.dev/mcp",
-      "secretHeader": {
-        "header": "Authorization",
-        "format": "Bearer {value}",
-        "env": "ORIGINKIT_API_KEY",
-        "prompt": "Chiave API di OriginKit (originkit.dev > Settings > API Integration; invio per usare l'accesso con /mcp)",
-        "withoutKey": "registrato senza chiave: autenticalo con /mcp in un terminale claude"
-      }
+      "headers": { "Authorization": "Bearer ${user_config.originkit_api_key}" }
     },
-    {
-      "name": "mobbin",
-      "transport": "http",
-      "url": "https://api.mobbin.com/mcp",
-      "note": "autenticalo con /mcp in un terminale claude (serve un piano Mobbin Pro o superiore)"
-    },
-    { "name": "ui-layouts-mcp", "transport": "stdio", "npx": ["-y", "@ui-layouts/mcp"] },
-    { "name": "shadcn", "transport": "stdio", "npx": ["-y", "shadcn@latest", "mcp"] },
-    { "name": "magicuidesign", "transport": "stdio", "npx": ["-y", "@magicuidesign/mcp@latest"] },
-    {
-      "name": "context7",
-      "transport": "http",
+    "mobbin": { "type": "http", "url": "https://api.mobbin.com/mcp" },
+    "ui-layouts-mcp": { "command": "cmd", "args": ["/c", "npx", "-y", "@ui-layouts/mcp"] },
+    "shadcn": { "command": "cmd", "args": ["/c", "npx", "-y", "shadcn@latest", "mcp"] },
+    "magicuidesign": { "command": "cmd", "args": ["/c", "npx", "-y", "@magicuidesign/mcp@latest"] },
+    "context7": {
+      "type": "http",
       "url": "https://mcp.context7.com/mcp",
-      "secretHeader": {
-        "header": "CONTEXT7_API_KEY",
-        "format": "{value}",
-        "env": "CONTEXT7_API_KEY",
-        "prompt": "Chiave API di Context7 (context7.com/dashboard; invio per usarlo senza chiave, con limiti più bassi)",
-        "withoutKey": "registrato senza chiave: funziona con limiti di richieste più bassi"
-      }
+      "headers": { "CONTEXT7_API_KEY": "${user_config.context7_api_key}" }
     }
-  ],
+  },
   "plugins": [
     { "id": "ecc@ecc", "marketplace": { "name": "ecc", "source": "https://github.com/affaan-m/ECC.git" } }
   ],

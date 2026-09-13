@@ -1,0 +1,27 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "ui-design",
+  "version": "1.0.0",
+  "description": "Hook di routing per i prompt di UI, front-end e design, con 97 skill e i connettori MCP di componenti e riferimenti.",
+  "author": {
+    "name": "GitAlboBis"
+  },
+  "skills": [
+    "./skills/"
+  ],
+  "userConfig": {
+    "originkit_api_key": {
+      "type": "string",
+      "title": "Chiave API di OriginKit",
+      "description": "Da originkit.dev > Settings > API Integration. Senza chiave il connettore originkit non si connette.",
+      "sensitive": true
+    },
+    "context7_api_key": {
+      "type": "string",
+      "title": "Chiave API di Context7",
+      "description": "Facoltativa: senza chiave Context7 funziona con limiti di richieste più bassi.",
+      "sensitive": true,
+      "default": ""
+    }
+  }
+}

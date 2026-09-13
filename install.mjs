@@ -1,32 +1,21 @@
 #!/usr/bin/env node
-// Installa su questa macchina la toolchain UI di Claude Code esportata dal PC principale:
-// hook di routing, regole, skill, connettori MCP e plugin ECC. Si può rilanciare quando si vuole:
-// salta ciò che è già a posto e salva una copia di ciò che sostituisce.
+// Installa su questa macchina la toolchain UI di Claude Code come plugin: aggiunge il marketplace del
+// repo privato, installa il plugin ui-design (hook, elenco, skill, connettori MCP) chiedendo le chiavi,
+// attiva l'aggiornamento automatico, installa ECC e copia le regole globali. Si può rilanciare.
 //
-// Uso: node install.mjs [--dry-run] [--yes] [--no-skills] [--no-mcp] [--no-ecc]
-//                       [--keep-existing-skills] [--force-mcp] [--config-dir <cartella>]
+// Uso: node install.mjs [--dry-run] [--yes] [--no-rules] [--no-ecc] [--local-marketplace] [--config-dir <cartella>]
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import readline from 'node:readline';
 import { fileURLToPath } from 'node:url';
-import {
-  copyDir,
-  hashDir,
-  hashFile,
-  parseArgs,
-  readJson,
-  removeStaleStaging,
-  resolveConfigDir,
-  writeJsonAtomic,
-} from './lib.mjs';
+import { hashFile, parseArgs, readJson, resolveConfigDir, writeJsonAtomic } from './lib.mjs';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
-const PAYLOAD = path.join(ROOT, 'payload');
 const ROUTER = 'ui-design-router.js';
 const IS_WINDOWS = process.platform === 'win32';
-const KNOWN_FLAGS = new Set(['dry-run', 'yes', 'no-skills', 'no-mcp', 'no-ecc', 'keep-existing-skills', 'force-mcp']);
+const KNOWN_FLAGS = new Set(['dry-run', 'yes', 'no-rules', 'no-ecc', 'local-marketplace']);
 
 let parsed;
 try {
@@ -42,6 +31,12 @@ const CFG = resolveConfigDir(values.configDir);
 if (values.configDir) process.env.CLAUDE_CONFIG_DIR = CFG; // anche i comandi claude lanciati da qui usano quella cartella
 const STAMP = `${new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15)}-${process.pid}`;
 const BACKUP = path.join(CFG, 'ui-toolchain-backups', STAMP);
+const manifest = readJson(path.join(ROOT, 'manifest.json'));
+const PLUGIN = manifest?.plugin?.name;
+const MARKETPLACE = manifest?.name;
+const PLUGIN_ID = `${PLUGIN}@${MARKETPLACE}`;
+// Dal repo su GitHub, così l'aggiornamento automatico arriva da lì; in locale solo per le prove.
+const MARKETPLACE_SOURCE = flags.has('local-marketplace') ? ROOT : manifest?.marketplaceSource;
 
 const report = { done: [], skipped: [], warnings: [], todo: [] };
 let backupUsed = false;
@@ -60,115 +55,26 @@ function backup(target, rel) {
 function preflight() {
   const major = Number(process.versions.node.split('.')[0]);
   if (major < 20) throw new Error(`serve Node.js 20 o superiore, trovato ${process.versions.node}`);
-  if (!fs.existsSync(path.join(PAYLOAD, 'lock.json'))) {
-    throw new Error('payload/lock.json mancante: sul PC principale lancia prima node export.mjs');
+  if (!PLUGIN || !MARKETPLACE || !MARKETPLACE_SOURCE) throw new Error('manifest.json mancante o incompleto');
+  if (!fs.existsSync(path.join(ROOT, '.claude-plugin', 'marketplace.json'))) {
+    throw new Error('.claude-plugin/marketplace.json mancante: sul PC principale lancia prima node export.mjs');
   }
-  console.log(`Toolchain UI di Claude Code -> ${CFG}`);
+  console.log(`Toolchain UI di Claude Code, plugin ${PLUGIN_ID} -> ${CFG}`);
   console.log(`${process.platform} ${process.arch}, Node ${process.versions.node}${DRY ? ', modalità prova: nessuna scrittura' : ''}\n`);
 }
 
-function installFile(kind, name) {
-  const src = path.join(PAYLOAD, kind, name);
-  const dst = path.join(CFG, kind, name);
-  if (!fs.existsSync(src)) return report.warnings.push(`${kind}/${name} manca nel payload`);
-  if (hashFile(src) === hashFile(dst)) return report.skipped.push(`${kind}/${name} già uguale`);
-  if (fs.existsSync(dst)) backup(dst, path.join(kind, name));
-  say(`${kind}/${name}`);
+function installRule(name) {
+  const src = path.join(ROOT, 'rules', name);
+  const dst = path.join(CFG, 'rules', name);
+  if (!fs.existsSync(src)) return report.warnings.push(`rules/${name} manca nel repo`);
+  if (hashFile(src) === hashFile(dst)) return report.skipped.push(`regola ${name} già uguale`);
+  if (fs.existsSync(dst)) backup(dst, path.join('rules', name));
+  say(`regola ${name}`);
   if (!DRY) {
     fs.mkdirSync(path.dirname(dst), { recursive: true });
     fs.copyFileSync(src, dst);
   }
-  report.done.push(`${kind}/${name}`);
-}
-
-function installSkills(names) {
-  const count = { added: 0, updated: 0, same: 0, kept: 0 };
-  if (!DRY) {
-    for (const dir of removeStaleStaging(path.join(CFG, 'skills'), new Set(names))) {
-      report.warnings.push(`cartella di appoggio ${dir} rimasta da un'installazione interrotta: eliminala a mano`);
-    }
-  }
-  for (const name of names) {
-    const src = path.join(PAYLOAD, 'skills', name);
-    const dst = path.join(CFG, 'skills', name);
-    if (!fs.existsSync(src)) {
-      report.warnings.push(`skill ${name} manca nel payload`);
-      continue;
-    }
-    // Una skill illeggibile o bloccata non deve fermare le altre né il resto dell'installazione.
-    try {
-      const exists = fs.existsSync(dst);
-      if (exists && hashDir(src) === hashDir(dst)) {
-        count.same++;
-        continue;
-      }
-      if (exists && flags.has('keep-existing-skills')) {
-        count.kept++;
-        continue;
-      }
-      if (exists) backup(dst, path.join('skills', name));
-      const leftover = DRY ? null : copyDir(src, dst);
-      if (leftover) report.warnings.push(`skill ${name}: la copia vecchia ${leftover} non si è cancellata, eliminala a mano`);
-      say(`skill ${name} ${exists ? 'aggiornata' : 'aggiunta'}`);
-      count[exists ? 'updated' : 'added']++;
-    } catch (err) {
-      const locked = ['EBUSY', 'EPERM', 'EACCES'].includes(err.code);
-      const why = locked ? 'la cartella è bloccata: chiudi terminali, editor o sincronizzazioni aperti lì dentro' : err.message;
-      report.warnings.push(`skill ${name}: lasciata com'era (${why}). Poi rilancia l'installer`);
-    }
-  }
-  report.done.push(
-    `skill: ${count.added} aggiunte, ${count.updated} aggiornate, ${count.same} già uguali` +
-      (count.kept ? `, ${count.kept} diverse lasciate com'erano` : ''),
-  );
-}
-
-const isRouterHook = (hook) => typeof hook?.command === 'string' && hook.command.includes(ROUTER);
-
-function registerHook() {
-  const file = path.join(CFG, 'settings.json');
-  const command = `node "${path.join(CFG, 'hooks', ROUTER).replace(/\\/g, '/')}"`;
-  let settings = {};
-  if (fs.existsSync(file)) {
-    const raw = fs.readFileSync(file, 'utf8').replace(/^﻿/, '');
-    try {
-      settings = raw.trim() ? JSON.parse(raw) : {};
-    } catch (err) {
-      return report.warnings.push(`settings.json non è JSON valido (${err.message}): hook NON registrato, correggi il file e rilancia`);
-    }
-  }
-  if (!settings || typeof settings !== 'object' || Array.isArray(settings)) {
-    return report.warnings.push('settings.json non contiene un oggetto: hook NON registrato');
-  }
-  // Forme che non riconosciamo: meglio avvisare che riscriverle.
-  if (settings.hooks != null && (typeof settings.hooks !== 'object' || Array.isArray(settings.hooks))) {
-    return report.warnings.push('settings.json: "hooks" non è un oggetto, hook NON registrato');
-  }
-  const hooks = settings.hooks || {};
-  if (hooks.UserPromptSubmit != null && !Array.isArray(hooks.UserPromptSubmit)) {
-    return report.warnings.push('settings.json: hooks.UserPromptSubmit non è una lista, hook NON registrato');
-  }
-  const groups = hooks.UserPromptSubmit || [];
-  const routers = groups.flatMap((g) => (Array.isArray(g?.hooks) ? g.hooks : [])).filter(isRouterHook);
-  if (routers.length === 1 && routers[0].command === command && routers[0].timeout === 10) {
-    return report.skipped.push('hook già registrato in settings.json');
-  }
-  // Toglie solo le registrazioni del router (percorso vecchio, doppioni) e ne aggiunge una.
-  const others = [];
-  for (const group of groups) {
-    if (!Array.isArray(group?.hooks)) {
-      others.push(group);
-      continue;
-    }
-    const kept = group.hooks.filter((h) => !isRouterHook(h));
-    if (kept.length === group.hooks.length) others.push(group);
-    else if (kept.length > 0) others.push({ ...group, hooks: kept });
-  }
-  settings.hooks = { ...hooks, UserPromptSubmit: [...others, { hooks: [{ type: 'command', command, timeout: 10 }] }] };
-  if (fs.existsSync(file)) backup(file, 'settings.json');
-  say(`hook registrato in ${file}`);
-  if (!DRY) writeJsonAtomic(file, settings);
-  report.done.push('hook registrato in settings.json');
+  report.done.push(`regola ${name}`);
 }
 
 // Cartelle del PATH lette in JS: where.exe scrive nella code page della console e storpia gli accenti.
@@ -240,81 +146,88 @@ function askSecret(question) {
   });
 }
 
-// Claude Code tiene i server MCP utente in ~/.claude.json, oppure dentro CLAUDE_CONFIG_DIR se impostata.
-function userMcpFile() {
-  return process.env.CLAUDE_CONFIG_DIR
-    ? path.join(process.env.CLAUDE_CONFIG_DIR, '.claude.json')
-    : path.join(os.homedir(), '.claude.json');
-}
+const knownMarketplaces = () => readJson(path.join(CFG, 'plugins', 'known_marketplaces.json')) || {};
+const installedPlugins = () => readJson(path.join(CFG, 'plugins', 'installed_plugins.json'))?.plugins || {};
 
-async function installMcp(bin, servers) {
-  const mcpFile = userMcpFile();
-  const existing = new Set(Object.keys(readJson(mcpFile)?.mcpServers || {}));
-  const force = flags.has('force-mcp');
-  const mcpBackup = path.join(BACKUP, path.basename(mcpFile));
-  if (force && !DRY && fs.existsSync(mcpFile)) {
-    backup(mcpFile, path.basename(mcpFile));
-    report.todo.push(`la copia ${mcpBackup} contiene le chiavi in chiaro: cancellala quando hai verificato che i connettori funzionano`);
-  }
-  for (const server of servers) {
-    const present = existing.has(server.name);
-    if (present && !force) {
-      report.skipped.push(`MCP ${server.name} già presente`);
-      continue;
-    }
-    const args = ['mcp', 'add', '--scope', 'user'];
-    let note = server.note || '';
-    let value = '';
-    if (server.transport === 'http') {
-      args.push('--transport', 'http', server.name, server.url);
-      if (server.secretHeader) {
-        const { env, prompt, header, format, withoutKey } = server.secretHeader;
-        value = process.env[env] || (INTERACTIVE && !DRY ? await askSecret(`${prompt}: `) : '');
-        // --header va dopo nome e URL: è variadico e altrimenti li inghiottirebbe.
-        if (value) args.push('--header', `${header}: ${format.replace('{value}', value)}`);
-        else note = withoutKey;
-      }
-    } else {
-      const npx = IS_WINDOWS ? ['cmd', '/c', 'npx'] : ['npx'];
-      args.push(server.name, '--', ...npx, ...server.npx);
-    }
-    // Reinstallare senza una chiave nuova cancellerebbe quella salvata.
-    if (present && server.secretHeader && !value) {
-      report.skipped.push(`MCP ${server.name} già presente e nessuna chiave nuova: lasciato com'era`);
-      continue;
-    }
-    say(`MCP ${server.name}${present ? ' (reinstallato)' : ''}`);
+function addMarketplace(bin) {
+  if (knownMarketplaces()[MARKETPLACE]) {
+    say(`marketplace ${MARKETPLACE}: aggiorno dal repo`);
     if (!DRY) {
-      if (present) runClaude(bin, ['mcp', 'remove', '--scope', 'user', server.name]);
-      const result = runClaude(bin, args);
-      if (result.code !== 0) {
-        const restore = present ? `; la configurazione precedente è in ${mcpBackup}` : '';
-        report.warnings.push(`MCP ${server.name}: claude mcp add non è riuscito (${lastLine(result.out)})${restore}`);
-        continue;
-      }
+      const result = runClaude(bin, ['plugin', 'marketplace', 'update', MARKETPLACE]);
+      if (result.code !== 0) report.warnings.push(`marketplace ${MARKETPLACE}: aggiornamento non riuscito (${lastLine(result.out)})`);
     }
-    report.done.push(`MCP ${server.name}`);
-    if (note) report.todo.push(`${server.name}: ${note}`);
+    report.done.push(`marketplace ${MARKETPLACE} aggiornato`);
+    return true;
   }
+  say(`marketplace ${MARKETPLACE} da ${MARKETPLACE_SOURCE}`);
+  if (!DRY) {
+    const result = runClaude(bin, ['plugin', 'marketplace', 'add', MARKETPLACE_SOURCE]);
+    if (result.code !== 0) {
+      report.warnings.push(
+        `marketplace ${MARKETPLACE}: non aggiunto (${lastLine(result.out)}). Per il repo privato serve l'accesso git: gh auth login e poi gh auth setup-git`,
+      );
+      return false;
+    }
+  }
+  report.done.push(`marketplace ${MARKETPLACE}`);
+  return true;
 }
 
-function installPlugin(bin, plugin) {
-  const marketplaces = readJson(path.join(CFG, 'plugins', 'known_marketplaces.json')) || {};
-  if (marketplaces[plugin.marketplace.name]) {
+// Claude Code aggiorna da solo, all'avvio, i marketplace con autoUpdate: le modifiche fatte sul PC arrivano senza comandi.
+function enableAutoUpdate() {
+  if (DRY) return report.done.push(`attiverebbe l'aggiornamento automatico di ${MARKETPLACE}`);
+  const file = path.join(CFG, 'settings.json');
+  const settings = readJson(file);
+  const entry = settings?.extraKnownMarketplaces?.[MARKETPLACE];
+  if (!entry) {
+    return report.warnings.push(`${MARKETPLACE} non è in settings.json: aggiornamento automatico non attivato, attivalo da /plugin`);
+  }
+  if (entry.autoUpdate === true) return report.skipped.push('aggiornamento automatico già attivo');
+  backup(file, 'settings.json');
+  writeJsonAtomic(file, {
+    ...settings,
+    extraKnownMarketplaces: { ...settings.extraKnownMarketplaces, [MARKETPLACE]: { ...entry, autoUpdate: true } },
+  });
+  say('aggiornamento automatico attivato');
+  report.done.push(`aggiornamento automatico di ${MARKETPLACE} attivato`);
+}
+
+async function installMainPlugin(bin) {
+  if (installedPlugins()[PLUGIN_ID]) {
+    return report.skipped.push(`plugin ${PLUGIN_ID} già installato (per cambiare le chiavi: /plugin configure ${PLUGIN_ID})`);
+  }
+  const args = ['plugin', 'install', PLUGIN_ID, '--scope', 'user', '--yes'];
+  const { userConfig = {}, install = {} } = manifest.plugin;
+  for (const [key, spec] of Object.entries(userConfig)) {
+    const required = (install.required || []).includes(key);
+    const env = install.env?.[key];
+    const question = `${spec.title}${required ? '' : ' (facoltativa, invio per saltare)'}: `;
+    const value = (env && process.env[env]) || (INTERACTIVE && !DRY ? await askSecret(question) : '');
+    if (value) args.push('--config', `${key}=${value}`);
+    else if (required) {
+      report.todo.push(`${spec.title} non data: ${install.withoutKey?.[key] || 'quella parte non funziona'}. Impostala con /plugin configure ${PLUGIN_ID}`);
+    }
+  }
+  say(`plugin ${PLUGIN_ID}`);
+  if (!DRY) {
+    const result = runClaude(bin, args);
+    if (result.code !== 0) return report.warnings.push(`plugin ${PLUGIN_ID}: non installato (${lastLine(result.out)})`);
+  }
+  report.done.push(`plugin ${PLUGIN_ID}`);
+}
+
+function installOtherPlugin(bin, plugin) {
+  if (knownMarketplaces()[plugin.marketplace.name]) {
     report.skipped.push(`marketplace ${plugin.marketplace.name} già presente`);
   } else {
     say(`marketplace ${plugin.marketplace.name}`);
     if (!DRY) {
       const result = runClaude(bin, ['plugin', 'marketplace', 'add', plugin.marketplace.source]);
-      if (result.code !== 0) {
-        return report.warnings.push(`marketplace ${plugin.marketplace.name}: non aggiunto (${lastLine(result.out)})`);
-      }
+      if (result.code !== 0) return report.warnings.push(`marketplace ${plugin.marketplace.name}: non aggiunto (${lastLine(result.out)})`);
     }
     report.done.push(`marketplace ${plugin.marketplace.name}`);
   }
-  const installedFile = path.join(CFG, 'plugins', 'installed_plugins.json');
-  const installed = fs.existsSync(installedFile) ? fs.readFileSync(installedFile, 'utf8') : '';
-  if (installed.includes(`"${plugin.id}"`)) return report.skipped.push(`plugin ${plugin.id} già installato`);
+  if (installedPlugins()[plugin.id]) return report.skipped.push(`plugin ${plugin.id} già installato`);
   say(`plugin ${plugin.id}`);
   if (!DRY) {
     const result = runClaude(bin, ['plugin', 'install', plugin.id, '--scope', 'user', '--yes']);
@@ -324,28 +237,57 @@ function installPlugin(bin, plugin) {
   report.todo.push(`${plugin.id}: se il plugin ha opzioni da impostare, in Claude Code lancia /plugin configure ${plugin.id}`);
 }
 
-function verifyHook() {
-  const hook = path.join(CFG, 'hooks', ROUTER);
-  if (DRY || !fs.existsSync(hook)) return;
-  // L'hook registrato si lancia con "node": deve risolversi dal PATH, non solo da questo processo.
+// La stessa toolchain installata anche a file farebbe scattare l'hook due volte e duplicherebbe le skill.
+function checkLooseInstall() {
+  const groups = readJson(path.join(CFG, 'settings.json'))?.hooks?.UserPromptSubmit;
+  const looseHook =
+    Array.isArray(groups) &&
+    groups.some((g) => Array.isArray(g?.hooks) && g.hooks.some((h) => typeof h?.command === 'string' && h.command.includes(ROUTER)));
+  if (looseHook) {
+    report.warnings.push("in settings.json c'è anche l'hook installato a file: con il plugin scatterebbe due volte. Togli quella voce da hooks.UserPromptSubmit");
+  }
+  const duplicates = manifest.skills.filter((name) => fs.existsSync(path.join(CFG, 'skills', name)));
+  if (duplicates.length) {
+    report.todo.push(`${duplicates.length} skill esistono anche fuori dal plugin in ${path.join(CFG, 'skills')}: compariranno due volte, con e senza prefisso ${PLUGIN}:`);
+  }
+}
+
+function verifyPlugin(bin) {
+  if (DRY) return;
+  const entry = installedPlugins()[PLUGIN_ID];
+  const installPath = (Array.isArray(entry) ? entry[0] : entry)?.installPath;
+  if (!installPath || !fs.existsSync(installPath)) return report.warnings.push(`plugin ${PLUGIN_ID} non trovato tra quelli installati: verifica saltata`);
+
   if (!onPath(IS_WINDOWS ? 'node.exe' : 'node')) {
-    report.warnings.push("node non è nel PATH: l'hook non partirà. Riapri il terminale o reinstalla Node.js, poi rilancia");
+    report.warnings.push("node non è nel PATH: l'hook del plugin non partirà. Riapri il terminale o reinstalla Node.js");
   }
   const sessionId = `installer-check-${process.pid}`;
-  const result = spawnSync(process.execPath, [hook], {
+  const hook = spawnSync(process.execPath, [path.join(installPath, 'hooks', ROUTER)], {
     input: JSON.stringify({ session_id: sessionId, cwd: ROOT, prompt: 'rifai la navbar mobile' }),
     encoding: 'utf8',
     timeout: 10000,
   });
   fs.rmSync(path.join(os.tmpdir(), 'claude-ui-design-router', `${sessionId}.json`), { force: true });
-  let ok = false;
+  let context = '';
   try {
-    ok = JSON.parse(result.stdout).hookSpecificOutput.additionalContext.startsWith('# Routing');
+    context = JSON.parse(hook.stdout).hookSpecificOutput.additionalContext;
   } catch {
-    ok = false;
+    context = '';
   }
-  if (ok) report.done.push("prova dell'hook superata");
-  else report.warnings.push(`prova dell'hook fallita: ${lastLine(result.stderr || result.stdout)}`);
+  if (context.startsWith('# Routing') && context.includes('Prefisso del plugin')) report.done.push("prova dell'hook del plugin superata");
+  else report.warnings.push(`prova dell'hook del plugin fallita: ${lastLine(hook.stderr || hook.stdout)}`);
+
+  const details = runClaude(bin, ['plugin', 'details', PLUGIN_ID]).out;
+  const count = (label) => Number(new RegExp(`${label} \\((\\d+)\\)`).exec(details)?.[1] ?? -1);
+  const skills = count('Skills');
+  const servers = count('MCP servers');
+  const hooks = count('Hooks');
+  const expectedServers = Object.keys(manifest.mcpServers).length;
+  if (skills === manifest.skills.length && servers === expectedServers && hooks >= 1) {
+    report.done.push(`contenuto del plugin verificato: ${skills} skill, ${servers} connettori, hook presente`);
+  } else {
+    report.warnings.push(`contenuto del plugin inatteso: skill ${skills}/${manifest.skills.length}, connettori ${servers}/${expectedServers}, hook ${hooks}`);
+  }
 }
 
 function printReport() {
@@ -355,13 +297,16 @@ function printReport() {
   section('Attenzione', report.warnings);
   const todo = [
     ...report.todo,
-    "apri una nuova sessione di Claude Code: hook, regole e skill si caricano all'avvio",
+    "apri una nuova sessione di Claude Code: il plugin si carica all'avvio",
+    `le skill del plugin si invocano con il prefisso ${PLUGIN}: (per esempio /${PLUGIN}:review-animations)`,
+    `mobbin: autenticalo con /mcp (il server si chiama plugin:${PLUGIN}:mobbin; serve un piano Mobbin Pro o superiore)`,
+    `le modifiche fatte sul PC arrivano da sole all'avvio di Claude Code; per averle subito: claude plugin marketplace update ${MARKETPLACE}`,
+    'le regole globali non sono nel plugin: se cambiano, git pull e rilancia node install.mjs',
     ...(IS_WINDOWS
       ? ["se l'app Claude desktop era aperta mentre installavi Node, chiudila del tutto (anche dall'area di notifica) e riaprila: hook e MCP con npx usano node e npx dal suo PATH"]
       : []),
     "il connettore 21st.dev arriva dall'account claude.ai: non serve installarlo",
-    'Impeccable scarica il suo motore al primo uso (serve la rete)',
-    'ui-ux-pro-max e motion-framer usano Python 3 per i loro script; la skill lighthouse usa la CLI di Lighthouse',
+    'Impeccable scarica il suo motore al primo uso (serve la rete); ui-ux-pro-max e motion-framer usano Python 3; la skill lighthouse usa la CLI di Lighthouse',
   ];
   if (backupUsed) todo.push(`copia di ciò che è stato sostituito: ${BACKUP}`);
   section('Da fare', todo);
@@ -370,20 +315,16 @@ function printReport() {
 
 async function main() {
   preflight();
-  const manifest = readJson(path.join(ROOT, 'manifest.json'));
-  if (!manifest) throw new Error('manifest.json mancante o non valido');
-  for (const name of manifest.hooks) installFile('hooks', name);
-  for (const name of manifest.rules) installFile('rules', name);
-  if (!flags.has('no-skills')) installSkills(manifest.skills);
-  registerHook();
-  const needsClaude = !flags.has('no-mcp') || !flags.has('no-ecc');
-  const bin = needsClaude ? findClaude() : null;
-  if (needsClaude && !bin) {
-    report.warnings.push('comando claude non trovato: connettori MCP e plugin saltati. Installa Claude Code e rilancia');
+  const bin = findClaude();
+  if (!bin) throw new Error('comando claude non trovato: installa Claude Code (irm https://claude.ai/install.ps1 | iex), riapri il terminale e rilancia');
+  if (!flags.has('no-rules')) for (const name of manifest.rules) installRule(name);
+  if (addMarketplace(bin)) {
+    enableAutoUpdate();
+    await installMainPlugin(bin);
   }
-  if (bin && !flags.has('no-mcp')) await installMcp(bin, manifest.mcpServers);
-  if (bin && !flags.has('no-ecc')) for (const plugin of manifest.plugins) installPlugin(bin, plugin);
-  verifyHook();
+  checkLooseInstall();
+  if (!flags.has('no-ecc')) for (const plugin of manifest.plugins) installOtherPlugin(bin, plugin);
+  verifyPlugin(bin);
   printReport();
   if (report.warnings.length) process.exitCode = 2;
 }
