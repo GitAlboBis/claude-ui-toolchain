@@ -1,0 +1,64 @@
+{
+  "name": "claude-ui-toolchain",
+  "description": "Toolchain UI, front-end e design di Claude Code: hook di routing, regole, skill, connettori MCP e plugin ECC.",
+  "hooks": ["ui-design-router.js", "ui-design-routing.md"],
+  "rules": ["frontend-visual-skills.md", "context7.md"],
+  "skills": [
+    "21st-ai", "21st-cli-use", "21st-design-sync", "21st-registry", "21st-ui-build", "21st-ui-explore", "21st-ui-review",
+    "3d-web-experience", "animate", "animate-expo", "animation-vocabulary", "apple-design", "ask-sonner", "avoid-ai-writing",
+    "awwwards-animations", "baseline-ui", "brainstorming", "design-md", "design-taste-frontend", "dispatching-parallel-agents",
+    "emil-design-eng", "executing-plans", "find-animation-opportunities", "finishing-a-development-branch",
+    "fixing-accessibility", "fixing-motion-performance", "frontend-design", "full-output-enforcement", "gpt-taste",
+    "gsap-core", "gsap-frameworks", "gsap-performance", "gsap-plugins", "gsap-react", "gsap-scrolltrigger", "gsap-timeline",
+    "gsap-utils", "high-end-visual-design", "impeccable", "improve-animations", "industrial-brutalist-ui", "lighthouse",
+    "minimalist-ui", "motion-design", "motion-framer", "pick-ui-library", "prototype", "receiving-code-review",
+    "redesign-existing-projects", "requesting-code-review", "review-animations", "scroll-experience", "shadcn",
+    "shader-programming-glsl", "spline-3d-integration", "stitch-design-taste", "stop-slop", "subagent-driven-development",
+    "svg-animations", "systematic-debugging", "tailwind-design-system", "tailwind-patterns", "test-driven-development",
+    "theme-factory", "threejs-animation", "threejs-fundamentals", "threejs-geometry", "threejs-interaction",
+    "threejs-lighting", "threejs-loaders", "threejs-materials", "threejs-postprocessing", "threejs-shaders", "threejs-skills",
+    "threejs-textures", "transitions-dev", "transitions-polish", "ui-a11y", "ui-component", "ui-page", "ui-pattern",
+    "ui-review", "ui-setup", "ui-tokens", "ui-ux-pro-max", "using-git-worktrees", "using-superpowers", "ux-audit", "ux-copy",
+    "ux-feedback", "ux-flow", "uxui-principles", "vengeance-ui", "verification-before-completion", "web-design-guidelines",
+    "writing-plans", "writing-skills"
+  ],
+  "mcpServers": [
+    {
+      "name": "originkit",
+      "transport": "http",
+      "url": "https://mcp.originkit.dev/mcp",
+      "secretHeader": {
+        "header": "Authorization",
+        "format": "Bearer {value}",
+        "env": "ORIGINKIT_API_KEY",
+        "prompt": "Chiave API di OriginKit (originkit.dev > Settings > API Integration; invio per usare l'accesso con /mcp)",
+        "withoutKey": "registrato senza chiave: autenticalo con /mcp in un terminale claude"
+      }
+    },
+    {
+      "name": "mobbin",
+      "transport": "http",
+      "url": "https://api.mobbin.com/mcp",
+      "note": "autenticalo con /mcp in un terminale claude (serve un piano Mobbin Pro o superiore)"
+    },
+    { "name": "ui-layouts-mcp", "transport": "stdio", "npx": ["-y", "@ui-layouts/mcp"] },
+    { "name": "shadcn", "transport": "stdio", "npx": ["-y", "shadcn@latest", "mcp"] },
+    { "name": "magicuidesign", "transport": "stdio", "npx": ["-y", "@magicuidesign/mcp@latest"] },
+    {
+      "name": "context7",
+      "transport": "http",
+      "url": "https://mcp.context7.com/mcp",
+      "secretHeader": {
+        "header": "CONTEXT7_API_KEY",
+        "format": "{value}",
+        "env": "CONTEXT7_API_KEY",
+        "prompt": "Chiave API di Context7 (context7.com/dashboard; invio per usarlo senza chiave, con limiti più bassi)",
+        "withoutKey": "registrato senza chiave: funziona con limiti di richieste più bassi"
+      }
+    }
+  ],
+  "plugins": [
+    { "id": "ecc@ecc", "marketplace": { "name": "ecc", "source": "https://github.com/affaan-m/ECC.git" } }
+  ],
+  "secretAllowlist": []
+}
