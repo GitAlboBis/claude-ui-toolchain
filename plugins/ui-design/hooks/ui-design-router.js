@@ -189,7 +189,9 @@ function cleanOldState(now) {
 const SHORT_REMINDER =
   'Prompt di UI/front-end/design: vale il routing di skill e connettori in ' +
   `${ROUTING_FILE.replace(/\\/g, '/')} (già iniettato in questa sessione; rileggilo con Read se non è più nel contesto). ` +
-  "Invoca le skill pertinenti PRIMA di scrivere codice e di' in una riga quali usi e perché.";
+  'Segui la checklist per fasi: direzione (impeccable e documenti di design), 1-2 skill della tecnica, ' +
+  'connettori prima di ogni componente nuovo, 1-2 skill di revisione e verification-before-completion alla fine. ' +
+  "Per ogni fase di' in una riga quali skill usi e perché.";
 
 // Documenti che dicono come deve essere il progetto. Claude Code carica da solo CLAUDE.md,
 // non questi: l'hook li elenca (senza leggerli) e Claude li apre con Read.

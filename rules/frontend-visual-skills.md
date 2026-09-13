@@ -17,7 +17,7 @@ MCP connectors for UI work: `21st.dev` (claude.ai connector), `magicuidesign`, `
 
 ## How to apply
 
-1. Pick 1–3 skills that fit the stage of the work and say in one line which ones and why. If none clearly match, say so and proceed.
+1. Follow the phase checklist of the routing table on every UI task, saying per phase which skills you use and why. At the start, invoke a direction skill (`impeccable` plus the project's design docs). During the build, invoke 1–2 skills specific to the technique. Before building any new component, search the component connectors and say what you found. At the end, run 1–2 review skills that fit what you touched, then `verification-before-completion` with a browser check.
 2. Project direction beats skill defaults: DESIGN.md, PRODUCT.md, CLAUDE.md / AGENTS.md and project memory win over any skill's taste (for example a client who asked for few animations).
 3. Search the component connectors before hand-writing a component that likely exists, then adapt what you take to the project's tokens.
 4. This complements the Context7 rule: Context7 for up-to-date library docs and API surface, skills for technique, patterns, and visual quality.

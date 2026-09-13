@@ -4,13 +4,15 @@ Iniettato dall'hook `~/.claude/hooks/ui-design-router.js` perché il prompt rigu
 
 ## Come usarlo
 
-1. Prima di scrivere codice o proporre una direzione, invoca con il tool Skill da 1 a 3 skill della tabella, scelte per la fase del lavoro. Di' in una riga quali usi e perché.
+1. In ogni lavoro di UI segui questa checklist con il tool Skill, e per ogni fase scrivi in una riga quali skill usi e perché:
+   - **Inizio, direzione:** invoca `impeccable` e leggi i documenti di design elencati in fondo a questo blocco. Aggiungi una skill di stile della tabella solo se il progetto non ha già una direzione scritta.
+   - **Costruzione, tecnica:** invoca 1 o 2 skill specifiche della tecnica che userai: `gsap-scrolltrigger` per lo scroll, `transitions-dev` per le transizioni CSS, `threejs-*` per il 3D, e così via.
+   - **Prima di ogni componente nuovo:** cercalo nei connettori (21st.dev, Magic UI, ui-layouts, OriginKit, shadcn; Mobbin per i riferimenti) e di' in una riga cosa hai trovato e perché lo usi o no. Adatta quello che prendi ai token del progetto. Per una coreografia o un effetto senza componenti nuovi basta dirlo.
+   - **Fine, revisione:** invoca 1 o 2 skill di revisione adatte a ciò che hai toccato: `improve-animations` o `fixing-motion-performance` per il motion, `21st-ui-review` o `baseline-ui` per la UI, `fixing-accessibility` per l'accessibilità. Poi `verification-before-completion`, con verifica nel browser (Browser pane o chrome-devtools), prima di dire che è fatto.
 2. Le direttive del progetto battono i gusti di default delle skill. In fondo a questo blocco l'hook elenca i documenti di design trovati nel progetto (DESIGN.md, PRODUCT.md, brand guide, spec di design, token): leggili con Read prima di proporre o scrivere UI, insieme ad AGENTS.md e alla memoria del progetto. Se il cliente ha chiesto poche animazioni, le skill di motion servono a rifinire o a togliere, non ad aggiungere effetti.
-3. Prima di disegnare da zero un componente che probabilmente esiste già, cercalo nei connettori; poi adatta quello che prendi ai token del progetto.
-4. I tool MCP sono differiti: caricali con ToolSearch (per esempio `+magicuidesign search`) prima di chiamarli.
-5. Se una skill o un connettore non c'è in questa sessione (non elencato, MCP non connesso), vai avanti senza e dillo una volta.
-6. Dopo una modifica visibile, verifica nel browser (Browser pane o chrome-devtools) prima di dire che è fatto (`verification-before-completion`).
-7. Il rilevatore di design di Impeccable si attiva per progetto, non a livello globale. Se il lavoro di UI è sostanziale e nel `.claude/settings.local.json` del progetto non c'è un hook di Impeccable, proponi all'utente di attivarlo con la skill `impeccable` e l'argomento `hooks on`. Scrive `.impeccable/` nel progetto, quindi serve il suo sì. La copia globale (4.3 e successive) usa il launcher `scripts/impeccable` (su Windows `impeccable.cmd`), che al primo avvio scarica un binario. Se il progetto ha una sua copia più vecchia di Impeccable in `.claude/skills` o `.agents/skills`, non dare per scontato il launcher: usa `impeccable` con l'argomento `doctor`.
+3. I tool MCP sono differiti: caricali con ToolSearch (per esempio `+magicuidesign search`) prima di chiamarli.
+4. Se una skill o un connettore non c'è in questa sessione (non elencato, MCP non connesso), vai avanti senza e dillo una volta.
+5. Il rilevatore di design di Impeccable si attiva per progetto, non a livello globale. Se il lavoro di UI è sostanziale e nel `.claude/settings.local.json` del progetto non c'è un hook di Impeccable, proponi all'utente di attivarlo con la skill `impeccable` e l'argomento `hooks on`. Scrive `.impeccable/` nel progetto, quindi serve il suo sì. La copia globale (4.3 e successive) usa il launcher `scripts/impeccable` (su Windows `impeccable.cmd`), che al primo avvio scarica un binario. Se il progetto ha una sua copia più vecchia di Impeccable in `.claude/skills` o `.agents/skills`, non dare per scontato il launcher: usa `impeccable` con l'argomento `doctor`.
 
 ## Skill per fase
 
