@@ -1,9 +1,9 @@
 {
-  "version": "1.0.1",
-  "contentHash": "f8716fd283a4fcf1bfbb16e85190c2f43b03114553a2b97bba9f24e8b03df4d1",
+  "version": "1.0.2",
+  "contentHash": "6a1fe45d10ba72a4a35c018ae7d7703d93d209f677e3cd79af2786426728acb0",
   "items": {
     "plugins/ui-design/hooks/ui-design-router.js": "92e23022106e99432ccff995f81616f0e32c7b10c4c0132ac6020ff62801f936",
-    "plugins/ui-design/hooks/ui-design-routing.md": "b52b5f10e0d266184b1783c7a5e5f33ec837298ca6dbc9e9255513a9e684512a",
+    "plugins/ui-design/hooks/ui-design-routing.md": "96e1fb3ffd15ac203797b8e287cf1211e8de4f862953352b62df5ac61ec8baca",
     "plugins/ui-design/skills/21st-ai": "8a3f31fce85f5df0c10f9bf69d1f6624b4d8df0f0d500737dce3a4063592e359",
     "plugins/ui-design/skills/21st-cli-use": "bad7525114a8a5c17e5a00359cf1e9dfe6e8d994313110fd73551b884de2d350",
     "plugins/ui-design/skills/21st-design-sync": "e8f69aa1f532d21d81041abe66d32f2f08e301e7f1b578fd55088b51d8a45fd6",
@@ -101,8 +101,8 @@
     "plugins/ui-design/skills/web-design-guidelines": "3454bc9682d0cf80b486a43a39a9348c0477dfd5968b81bec56af0fcdf4774db",
     "plugins/ui-design/skills/writing-plans": "b2c043f104d972a8a843ab3b3b31ac2280a4fac3db6af2b1d66bbd8e392e863f",
     "plugins/ui-design/skills/writing-skills": "58e81de3bd521c5b4719a1fe31191a59259c4eb117ffdbbb86227d0976c0a1eb",
-    "rules/frontend-visual-skills.md": "cfca47f7431ed6f87dcfe37c4b61e482a1a5a14ea0824ca1f2c9ac2db6910194",
+    "rules/frontend-visual-skills.md": "887c643dc75cef5b70b7918630a357aaf4af09f89c08be965f130e68cc41378f",
     "rules/context7.md": "29cb283879daabad5b4322d40bec1062fc3d64e5201311cb61ee390d992ddeb2"
   },
-  "exportedAt": "2026-09-13T11:53:10.593Z"
+  "exportedAt": "2026-09-19T12:06:28.958Z"
 }

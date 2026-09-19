@@ -13,7 +13,7 @@ The full skill-by-stage and connector table is `ui-design-routing.md`. A UserPro
 
 Core skills: `impeccable`, `frontend-design`, `design-taste-frontend` and the other Leonxlnx taste skills, `ui-ux-pro-max`, Emil Kowalski's skills (`emil-design-eng`, `improve-animations`, `apple-design`, `animate`, …), `transitions-dev` and `transitions-polish`, the `21st-ui-*` skills, the `gsap-*` skills, `vengeance-ui`, `shadcn`, `stop-slop`, and the Superpowers process skills (`brainstorming`, `writing-plans`, `verification-before-completion`). Specific skills (`threejs-shaders`, `gsap-scrolltrigger`) beat generic ones. `review-animations`, `prototype` and `pick-ui-library` have model invocation disabled: suggest them to the user as slash commands instead of calling them. The `ui-a11y` / `ui-component` / `ui-page` family follows StyleSeed conventions: use it only in StyleSeed projects.
 
-MCP connectors for UI work: `21st.dev` (claude.ai connector), `magicuidesign`, `ui-layouts-mcp`, `originkit`, `mobbin`, `shadcn`, plus `context7` for docs. Their tools are deferred: load them with ToolSearch before calling.
+MCP connectors for UI work: `21st.dev` (claude.ai connector), `magicuidesign`, `ui-layouts-mcp`, `originkit`, `mobbin`, `shadcn` (reads the project's `components.json`, where the `@aceternity` and `@vengeanceui` registries live; the Aceternity key stays in `.env.local` as `${ACETERNITY_API_KEY}`), `vengeance-ui` (local build at `~/.claude/mcp-servers/VengeanceUI`, since the npm package is unpublished), plus `context7` for docs. Their tools are deferred: load them with ToolSearch before calling.
 
 ## How to apply
 

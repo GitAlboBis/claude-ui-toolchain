@@ -11,7 +11,7 @@
       "name": "ui-design",
       "source": "./plugins/ui-design",
       "description": "Hook di routing per i prompt di UI, front-end e design, con 97 skill e i connettori MCP di componenti e riferimenti.",
-      "version": "1.0.1"
+      "version": "1.0.2"
     }
   ]
 }
